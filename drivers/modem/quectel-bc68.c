@@ -755,14 +755,14 @@ static void modem_reset(void)
 		/* stop functionality */
 		SETUP_CMD_NOHANDLE("AT+CFUN=0"),
 		/* extended error numbers */
-		//SETUP_CMD_NOHANDLE("AT+CMEE=1"),
+		SETUP_CMD_NOHANDLE("AT+CMEE=1"),
 		/* UNC messages for registration */
 		SETUP_CMD_NOHANDLE("AT+CEREG=1"),
 		/* query modem info */
-		//SETUP_CMD("AT+CGMI", "", on_cmd_atcmdinfo_manufacturer, 0U, ""),
-		//SETUP_CMD("AT+CGMM", "", on_cmd_atcmdinfo_model, 0U, ""),
-		//SETUP_CMD("AT+CGMR", "", on_cmd_atcmdinfo_revision, 0U, ""),
-		//SETUP_CMD("AT+CGSN", "", on_cmd_atcmdinfo_imei, 0U, ""),
+		SETUP_CMD("AT+CGMI", "", on_cmd_atcmdinfo_manufacturer, 0U, ""),
+		SETUP_CMD("AT+CGMM", "", on_cmd_atcmdinfo_model, 0U, ""),
+		SETUP_CMD("AT+CGMR", "", on_cmd_atcmdinfo_revision, 0U, ""),
+		SETUP_CMD("AT+CGSN", "", on_cmd_atcmdinfo_imei, 0U, ""),
 		/* setup PDP context definition */
 		//SETUP_CMD_NOHANDLE("AT+CGDCONT=1,\"IP\",\""
 		//			CONFIG_MODEM_UBLOX_SARA_R4_APN "\""),
