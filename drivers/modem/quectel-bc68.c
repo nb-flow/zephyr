@@ -25,44 +25,12 @@ LOG_MODULE_REGISTER(modem_quectel_bc68, CONFIG_MODEM_LOG_LEVEL);
 #include "modem_iface_uart.h"
 
 
-/* pin settings */
-enum mdm_control_pins {
-	MDM_POWER = 0,
-	MDM_RESET,
-#if defined(DT_UBLOX_SARA_R4_0_MDM_VINT_GPIOS_CONTROLLER)
-	MDM_VINT,
-#endif
-};
-
-static struct modem_pin modem_pins[] = {
-	/* MDM_POWER */
-	MODEM_PIN(DT_INST_0_UBLOX_SARA_R4_MDM_POWER_GPIOS_CONTROLLER,
-		  DT_INST_0_UBLOX_SARA_R4_MDM_POWER_GPIOS_PIN,
-		  DT_INST_0_UBLOX_SARA_R4_MDM_POWER_GPIOS_FLAGS | GPIO_OUTPUT),
-
-	/* MDM_RESET */
-	MODEM_PIN(DT_INST_0_UBLOX_SARA_R4_MDM_RESET_GPIOS_CONTROLLER,
-		  DT_INST_0_UBLOX_SARA_R4_MDM_RESET_GPIOS_PIN,
-		  DT_INST_0_UBLOX_SARA_R4_MDM_RESET_GPIOS_FLAGS | GPIO_OUTPUT),
-
-#if defined(DT_UBLOX_SARA_R4_0_MDM_VINT_GPIOS_CONTROLLER)
-	/* MDM_VINT */
-	MODEM_PIN(DT_INST_0_UBLOX_SARA_R4_MDM_VINT_GPIOS_CONTROLLER,
-		  DT_INST_0_UBLOX_SARA_R4_MDM_VINT_GPIOS_PIN,
-		  DT_INST_0_UBLOX_SARA_R4_MDM_VINT_GPIOS_FLAGS | GPIO_INPUT),
-#endif
-};
-
-#define MDM_UART_DEV_NAME		DT_INST_0_UBLOX_SARA_R4_BUS_NAME
+#define MDM_UART_DEV_NAME		DT_INST_0_QUECTEL_BC68_BUS_NAME
 
 #define MDM_POWER_ENABLE		1
 #define MDM_POWER_DISABLE		0
 #define MDM_RESET_NOT_ASSERTED		1
 #define MDM_RESET_ASSERTED		0
-#if defined(DT_UBLOX_SARA_R4_0_MDM_VINT_GPIOS_CONTROLLER)
-#define MDM_VINT_ENABLE			1
-#define MDM_VINT_DISABLE		0
-#endif
 
 #define MDM_CMD_TIMEOUT			K_SECONDS(10)
 #define MDM_DNS_TIMEOUT			K_SECONDS(70)
@@ -95,12 +63,12 @@ NET_BUF_POOL_DEFINE(mdm_recv_pool, MDM_RECV_MAX_BUF, MDM_RECV_BUF_SIZE,
 
 /* RX thread structures */
 K_THREAD_STACK_DEFINE(modem_rx_stack,
-		      CONFIG_MODEM_UBLOX_SARA_R4_RX_STACK_SIZE);
+		      CONFIG_MODEM_QUECTEL_BC68_RX_STACK_SIZE);
 struct k_thread modem_rx_thread;
 
 /* RX thread work queue */
 K_THREAD_STACK_DEFINE(modem_workq_stack,
-		      CONFIG_MODEM_UBLOX_SARA_R4_RX_WORKQ_STACK_SIZE);
+		      CONFIG_MODEM_QUECTEL_BC68_RX_WORKQ_STACK_SIZE);
 static struct k_work_q modem_workq;
 
 /* socket read callback data */
@@ -561,13 +529,6 @@ MODEM_CMD_DEFINE(on_cmd_sockreadfrom)
 				      ATOI(argv[3], 0, "length"), len);
 }
 
-/* Handler: +USORD: <socket_id>[0],<length>[1],"<data>" */
-MODEM_CMD_DEFINE(on_cmd_sockread)
-{
-	return on_cmd_sockread_common(ATOI(argv[0], 0, "socket_id"), data,
-				      ATOI(argv[1], 0, "length"), len);
-}
-
 #if defined(CONFIG_DNS_RESOLVER)
 /* Handler: +UDNSRN: "<resolved_ip_address>"[0], "<resolved_ip_address>"[1] */
 MODEM_CMD_DEFINE(on_cmd_dns)
@@ -649,79 +610,6 @@ static void modem_rx(void)
 		/* give up time if we have a solid stream of data */
 		k_yield();
 	}
-}
-
-static int pin_init(void)
-{
-	LOG_INF("Setting Modem Pins");
-
-	LOG_DBG("MDM_RESET_PIN -> NOT_ASSERTED");
-	modem_pin_write(&mctx, MDM_RESET, MDM_RESET_NOT_ASSERTED);
-
-	LOG_DBG("MDM_POWER_PIN -> ENABLE");
-	modem_pin_write(&mctx, MDM_POWER, MDM_POWER_ENABLE);
-	k_sleep(K_SECONDS(4));
-
-	LOG_DBG("MDM_POWER_PIN -> DISABLE");
-	modem_pin_write(&mctx, MDM_POWER, MDM_POWER_DISABLE);
-#if defined(CONFIG_MODEM_UBLOX_SARA_U2)
-	k_sleep(K_SECONDS(1));
-#else
-	k_sleep(K_SECONDS(4));
-#endif
-	LOG_DBG("MDM_POWER_PIN -> ENABLE");
-	modem_pin_write(&mctx, MDM_POWER, MDM_POWER_ENABLE);
-	k_sleep(K_SECONDS(1));
-
-	/* make sure module is powered off */
-#if defined(DT_UBLOX_SARA_R4_0_MDM_VINT_GPIOS_CONTROLLER)
-	LOG_DBG("Waiting for MDM_VINT_PIN = 0");
-
-	while (modem_pin_read(&mctx, MDM_VINT) != MDM_VINT_DISABLE) {
-#if defined(CONFIG_MODEM_UBLOX_SARA_U2)
-		/* try to power off again */
-		LOG_DBG("MDM_POWER_PIN -> DISABLE");
-		modem_pin_write(&mctx, MDM_POWER, MDM_POWER_DISABLE);
-		k_sleep(K_SECONDS(1));
-		LOG_DBG("MDM_POWER_PIN -> ENABLE");
-		modem_pin_write(&mctx, MDM_POWER, MDM_POWER_ENABLE);
-#endif
-		k_sleep(K_MSEC(100));
-	}
-#else
-	k_sleep(K_SECONDS(8));
-#endif
-
-	LOG_DBG("MDM_POWER_PIN -> DISABLE");
-
-	unsigned int irq_lock_key = irq_lock();
-
-	modem_pin_write(&mctx, MDM_POWER, MDM_POWER_DISABLE);
-#if defined(CONFIG_MODEM_UBLOX_SARA_U2)
-	k_usleep(50);		/* 50-80 microseconds */
-#else
-	k_sleep(K_SECONDS(1));
-#endif
-	modem_pin_write(&mctx, MDM_POWER, MDM_POWER_ENABLE);
-
-	irq_unlock(irq_lock_key);
-
-	LOG_DBG("MDM_POWER_PIN -> ENABLE");
-
-#if defined(DT_UBLOX_SARA_R4_0_MDM_VINT_GPIOS_CONTROLLER)
-	LOG_DBG("Waiting for MDM_VINT_PIN = 1");
-	do {
-		k_sleep(K_MSEC(100));
-	} while (modem_pin_read(&mctx, MDM_VINT) != MDM_VINT_ENABLE);
-#else
-	k_sleep(K_SECONDS(10));
-#endif
-
-	modem_pin_config(&mctx, MDM_POWER, false);
-
-	LOG_INF("... Done!");
-
-	return 0;
 }
 
 static void modem_rssi_query_work(struct k_work *work)
@@ -1328,7 +1216,7 @@ static bool offload_is_supported(int family, int type, int proto)
 	return true;
 }
 
-NET_SOCKET_REGISTER(ublox_sara_r4, AF_UNSPEC, offload_is_supported,
+NET_SOCKET_REGISTER(quectel_bc68, AF_UNSPEC, offload_is_supported,
 		    offload_socket);
 
 #if defined(CONFIG_DNS_RESOLVER)
@@ -1487,7 +1375,6 @@ static struct modem_cmd response_cmds[] = {
 static struct modem_cmd unsol_cmds[] = {
 	MODEM_CMD("+UUSOCL: ", on_cmd_socknotifyclose, 1U, ""),
 	MODEM_CMD("+NSONMI:", on_cmd_socknotifydata, 2U, ","),
-	//MODEM_CMD("+UUSORF: ", on_cmd_socknotifydata, 2U, ","),
 	MODEM_CMD("+CEREG:", on_cmd_socknotifycreg, 1U, ""),
 };
 
@@ -1549,10 +1436,6 @@ static int modem_init(struct device *dev)
 	mctx.data_model = mdata.mdm_model;
 	mctx.data_revision = mdata.mdm_revision;
 	mctx.data_imei = mdata.mdm_imei;
-
-	/* pin setup */
-	mctx.pins = modem_pins;
-	mctx.pins_len = ARRAY_SIZE(modem_pins);
 
 	mctx.driver_data = &mdata;
 
@@ -1643,7 +1526,7 @@ int modem_get_cellid()
 	return uestats.cellid;
 }
 
-NET_DEVICE_OFFLOAD_INIT(modem_sara, CONFIG_MODEM_UBLOX_SARA_R4_NAME,
+NET_DEVICE_OFFLOAD_INIT(modem_bc68, CONFIG_MODEM_QUECTEL_BC68_NAME,
 			modem_init, &mdata, NULL,
-			CONFIG_MODEM_UBLOX_SARA_R4_INIT_PRIORITY, &api_funcs,
+			CONFIG_MODEM_QUECTEL_BC68_INIT_PRIORITY, &api_funcs,
 			MDM_MAX_DATA_LENGTH);

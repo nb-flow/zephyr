@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description: Quectel BC68 modem
+
+compatible: "quectel,bc68"
+
+include: uart-device.yaml
+
+properties:
+    label:
+      required: true
