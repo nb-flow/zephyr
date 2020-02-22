@@ -1577,6 +1577,72 @@ error:
 	return ret;
 }
 
+int modem_get_rssi()
+{
+	return mctx.data_rssi;
+}
+
+struct {
+	int cellid;
+} uestats;
+
+/*
+ * Handler: Cell ID:<cellid>[0]
+ */
+MODEM_CMD_DEFINE(on_cmd_atcmdinfo_cellid)
+{
+	uestats.cellid = ATOI(argv[0], 0, "cellid");
+
+	LOG_INF("Cell ID: %d", uestats.cellid);
+	
+	return 0;
+}
+
+int modem_get_uestats()
+{
+	/* AT+NUESTATS returns e.g.:
+	Signal power:-663
+	Total power:-632
+	TX power:-35
+	TX time:1572
+	RX time:17847
+	Cell ID:27447553
+	ECL:0
+	SNR:290
+	EARFCN:3701
+	PCI:37
+	RSRQ:-108
+	*/
+
+	uestats.cellid = -1;
+
+	struct modem_cmd cmd = MODEM_CMD("Cell ID:", on_cmd_atcmdinfo_cellid, 1U, ",");
+	static char *send_cmd = "AT+NUESTATS";
+	int ret;
+
+	/* query modem RSSI */
+	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler,
+			     &cmd, 1U, send_cmd, &mdata.sem_response,
+			     MDM_CMD_TIMEOUT);
+	if (ret < 0) {
+		LOG_ERR("AT+NUESTATS ret:%d", ret);
+	}
+
+	return 0;
+}
+
+int modem_get_cellid()
+{
+	modem_get_uestats();
+
+	if(uestats.cellid < 0)
+	{
+		LOG_ERR("Failed to retrieve cell ID.");
+	}
+
+	return uestats.cellid;
+}
+
 NET_DEVICE_OFFLOAD_INIT(modem_sara, CONFIG_MODEM_UBLOX_SARA_R4_NAME,
 			modem_init, &mdata, NULL,
 			CONFIG_MODEM_UBLOX_SARA_R4_INIT_PRIORITY, &api_funcs,
