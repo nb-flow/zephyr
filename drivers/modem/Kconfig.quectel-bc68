@@ -18,6 +18,12 @@ config MODEM_QUECTEL_BC68
 
 if MODEM_QUECTEL_BC68
 
+config MODEM_QUECTEL_BC68_REBOOT
+	bool "Reboot the Quectel BC68 modem on startup"
+	default y
+	help
+	  Choose this setting to reboot the Quectel BC68 modem on startup.
+
 config MODEM_UBLOX_SARA_R4_NAME
 	string "Driver name"
 	default "MODEM_SARA"

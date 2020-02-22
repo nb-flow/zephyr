@@ -805,6 +805,7 @@ restart:
 		goto error;
 	}
 
+#ifdef CONFIG_MODEM_QUECTEL_BC68_REBOOT
 	LOG_INF("Rebooting modem");
 
 	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler,
@@ -813,6 +814,7 @@ restart:
 	if (ret < 0 && ret != -ETIMEDOUT) {
 		goto error;
 	}
+#endif
 
 	LOG_INF("Setting up modem");
 
@@ -824,6 +826,30 @@ restart:
 		goto error;
 	}
 
+#ifndef CONFIG_MODEM_QUECTEL_BC68_REBOOT
+	LOG_INF("Closing all sockets");		// NB: these commands might return ERROR if the socket was not open,
+										//     this is why we don't put them in the setup commands
+	
+	// TODO: do this with a loop and print the result (which sockets were successfully closed)
+	modem_cmd_send(&mctx.iface, &mctx.cmd_handler,
+					NULL, 0, "AT+NSOCL=1", &mdata.sem_response,
+					MDM_CMD_TIMEOUT);
+	modem_cmd_send(&mctx.iface, &mctx.cmd_handler,
+					NULL, 0, "AT+NSOCL=2", &mdata.sem_response,
+					MDM_CMD_TIMEOUT);
+	modem_cmd_send(&mctx.iface, &mctx.cmd_handler,
+					NULL, 0, "AT+NSOCL=3", &mdata.sem_response,
+					MDM_CMD_TIMEOUT);
+	modem_cmd_send(&mctx.iface, &mctx.cmd_handler,
+					NULL, 0, "AT+NSOCL=4", &mdata.sem_response,
+					MDM_CMD_TIMEOUT);
+	modem_cmd_send(&mctx.iface, &mctx.cmd_handler,
+					NULL, 0, "AT+NSOCL=5", &mdata.sem_response,
+					MDM_CMD_TIMEOUT);
+	modem_cmd_send(&mctx.iface, &mctx.cmd_handler,
+					NULL, 0, "AT+NSOCL=6", &mdata.sem_response,
+					MDM_CMD_TIMEOUT);
+#endif
 
 	// if (strlen(CONFIG_MODEM_UBLOX_SARA_R4_MANUAL_MCCMNO) > 0) {
 	// 	/* use manual MCC/MNO entry */
