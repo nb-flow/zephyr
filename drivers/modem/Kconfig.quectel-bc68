@@ -8,8 +8,8 @@ config MODEM_QUECTEL_BC68
 	select MODEM_CMD_HANDLER
 	select MODEM_IFACE_UART
 	select MODEM_SOCKET
-	select NET_OFFLOAD
-	select NET_SOCKETS_OFFLOAD
+	select NET_OFFLOAD if !MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
+	select NET_SOCKETS_OFFLOAD if !MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
 #	imply GPIO
 	help
 	  Choose this setting to enable Quectel BC68 LTE-CatM1/NB-IoT modem
@@ -17,9 +17,21 @@ config MODEM_QUECTEL_BC68
 
 if MODEM_QUECTEL_BC68
 
+config MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
+	bool "Circumvent all networking modules"
+	default n
+	depends on !NETWORKING
+
+if MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
+	config NET_UTILS_LOG_LEVEL
+		int
+		# LOG_LEVEL_INF
+		default 3 
+endif
+
 config MODEM_QUECTEL_BC68_REBOOT
 	bool "Reboot the Quectel BC68 modem on startup"
-	default y
+	default n
 	help
 	  Choose this setting to reboot the Quectel BC68 modem on startup.
 
@@ -33,13 +45,13 @@ config MODEM_QUECTEL_BC68_RX_STACK_SIZE
 	help
 	  This stack is used by the Quectel BC68 RX thread.
 
-config MODEM_QUECTEL_BC68_RX_WORKQ_STACK_SIZE
-	int "Stack size for the Quectel BC68 modem driver work queue"
-	default 2048
-	help
-	  This stack is used by the work queue to pass off net_pkt data
-	  to the rest of the network stack, letting the rx thread continue
-	  processing data.
+#config MODEM_QUECTEL_BC68_RX_WORKQ_STACK_SIZE
+#	int "Stack size for the Quectel BC68 modem driver work queue"
+#	default 2048
+#	help
+#	  This stack is used by the work queue to pass off net_pkt data
+#	  to the rest of the network stack, letting the rx thread continue
+#	  processing data.
 
 #config MODEM_QUECTEL_BC68_APN
 #	string "APN for establishing network connection"

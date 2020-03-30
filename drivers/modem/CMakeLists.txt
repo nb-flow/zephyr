@@ -31,3 +31,8 @@ if(CONFIG_MODEM_GSM_PPP)
 	zephyr_library_include_directories(${ZEPHYR_BASE}/subsys/net/ip)
 	zephyr_library_sources(gsm_ppp.c)
 endif()
+
+if(CONFIG_MODEM_QUECTEL_BC68_WITHOUT_NETWORKING)
+	zephyr_library_include_directories(include)
+	zephyr_library_sources(${ZEPHYR_BASE}/subsys/net/ip/utils.c)
+endif()

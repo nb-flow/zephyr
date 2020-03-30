@@ -256,6 +256,7 @@ void modem_socket_put(struct modem_socket_config *cfg, int sock_fd)
  * socket it polled. I think we could live with such limitation though in the
  * initial implementation, but this should be improved in the future.
  */
+#ifndef CONFIG_MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
 int modem_socket_poll(struct modem_socket_config *cfg,
 		      struct pollfd *fds, int nfds, int msecs)
 {
@@ -313,6 +314,7 @@ int modem_socket_poll(struct modem_socket_config *cfg,
 	errno = 0;
 	return found_count;
 }
+#endif	// CONFIG_MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
 
 void modem_socket_wait_data(struct modem_socket_config *cfg,
 			    struct modem_socket *sock)

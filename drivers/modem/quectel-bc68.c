@@ -39,7 +39,7 @@ LOG_MODULE_REGISTER(modem_quectel_bc68, CONFIG_MODEM_LOG_LEVEL);
 #define MDM_PROMPT_CMD_DELAY		K_MSEC(75)
 
 #define MDM_MAX_DATA_LENGTH		1024
-#define MDM_RECV_MAX_BUF		30
+#define MDM_RECV_MAX_BUF		5				// <- reduced to save RAM
 #define MDM_RECV_BUF_SIZE		128
 
 #define MDM_MAX_SOCKETS			6
@@ -67,9 +67,9 @@ K_THREAD_STACK_DEFINE(modem_rx_stack,
 struct k_thread modem_rx_thread;
 
 /* RX thread work queue */
-K_THREAD_STACK_DEFINE(modem_workq_stack,
-		      CONFIG_MODEM_QUECTEL_BC68_RX_WORKQ_STACK_SIZE);
-static struct k_work_q modem_workq;
+// K_THREAD_STACK_DEFINE(modem_workq_stack,
+// 		      CONFIG_MODEM_QUECTEL_BC68_RX_WORKQ_STACK_SIZE);
+// static struct k_work_q modem_workq;
 
 /* socket read callback data */
 struct socket_read_data {
@@ -99,7 +99,7 @@ struct modem_data {
 	struct modem_socket sockets[MDM_MAX_SOCKETS];
 
 	/* RSSI work */
-	struct k_delayed_work rssi_query_work;
+	// struct k_delayed_work rssi_query_work;
 
 	/* modem data */
 	char mdm_manufacturer[MDM_MANUFACTURER_LENGTH];
@@ -385,19 +385,19 @@ MODEM_CMD_DEFINE(on_cmd_atcmdinfo_imei)
  */
 MODEM_CMD_DEFINE(on_cmd_atcmdinfo_rssi_csq)
 {
-	int rssi;
+	int csq;
 
-	rssi = ATOI(argv[0], 0, "qual");
+	csq = ATOI(argv[0], 0, "qual");
 
-	LOG_INF("raw rssi: %d", rssi);
+	// if (rssi >= 0 && rssi < 99) {
+	// 	/* TODO: what is this formula (it's from the ublox Sara U2 modem driver)? compare to what is given in the datasheet
+	// 	for the Quectel BC68 */
+	// 	mctx.data_rssi = -110 + ((rssi * 2) + 1);
+	// } else {
+	// 	mctx.data_rssi = -1000;
+	// }
 
-	if (rssi >= 0 && rssi < 99) {
-		/* TODO: what is this formula (it's from the ublox Sara U2 modem driver)? compare to what is given in the datasheet
-		for the Quectel BC68 */
-		mctx.data_rssi = -110 + ((rssi * 2) + 1);
-	} else {
-		mctx.data_rssi = -1000;
-	}
+	mctx.data_rssi = csq;
 	
 	return 0;
 }
@@ -627,11 +627,11 @@ static void modem_rssi_query_work(struct k_work *work)
 	}
 
 	/* re-start RSSI query work */
-	if (work) {
-		k_delayed_work_submit_to_queue(&modem_workq,
-					       &mdata.rssi_query_work,
-					       K_SECONDS(RSSI_TIMEOUT_SECS));
-	}
+	// if (work) {
+	// 	k_delayed_work_submit_to_queue(&modem_workq,
+	// 				       &mdata.rssi_query_work,
+	// 				       K_SECONDS(RSSI_TIMEOUT_SECS));
+	// }
 }
 
 static void modem_reset(void)
@@ -659,14 +659,14 @@ static void modem_reset(void)
 		SETUP_CMD_NOHANDLE("AT+CGATT=1"),
 	};
 
-	static struct setup_cmd post_setup_cmds[] = {
-		/* activate the PDP context */
-		//SETUP_CMD_NOHANDLE("AT+CGACT=1,1"),
-	};
+	// static struct setup_cmd post_setup_cmds[] = {
+	// 	/* activate the PDP context */
+	// 	//SETUP_CMD_NOHANDLE("AT+CGACT=1,1"),
+	// };
 
-restart:
-	/* stop RSSI delay work */
-	k_delayed_work_cancel(&mdata.rssi_query_work);
+// restart:
+// 	/* stop RSSI delay work */
+// 	k_delayed_work_cancel(&mdata.rssi_query_work);
 
 	// TODO: implement modem startup/reboot via GPIO pins instead of rebooting it
 	//       with AT commands (see below), it should be safer
@@ -790,52 +790,52 @@ restart:
 		k_sleep(K_SECONDS(1));
 	}
 
-	/* query modem RSSI */
-	modem_rssi_query_work(NULL);
-	k_sleep(MDM_WAIT_FOR_RSSI_DELAY);
+	// /* query modem RSSI */
+	// modem_rssi_query_work(NULL);
+	// k_sleep(MDM_WAIT_FOR_RSSI_DELAY);
 
-	counter = 0;
-	/* wait for RSSI < 0 and > -1000 */
-	while (counter++ < MDM_WAIT_FOR_RSSI_COUNT &&
-	       (mctx.data_rssi >= 0 ||
-		mctx.data_rssi <= -1000)) {
-		modem_rssi_query_work(NULL);
-		k_sleep(MDM_WAIT_FOR_RSSI_DELAY);
-	}
+	// counter = 0;
+	// /* wait for RSSI < 0 and > -1000 */
+	// while (counter++ < MDM_WAIT_FOR_RSSI_COUNT &&
+	//        (mctx.data_rssi >= 0 ||
+	// 	mctx.data_rssi <= -1000)) {
+	// 	modem_rssi_query_work(NULL);
+	// 	k_sleep(MDM_WAIT_FOR_RSSI_DELAY);
+	// }
 
-	if (mctx.data_rssi >= 0 || mctx.data_rssi <= -1000) {
-		retry_count++;
-		if (retry_count >= MDM_NETWORK_RETRY_COUNT) {
-			LOG_ERR("Failed network init.  Too many attempts!");
-			ret = -ENETUNREACH;
-			goto error;
-		}
+	// if (mctx.data_rssi >= 0 || mctx.data_rssi <= -1000) {
+	// 	retry_count++;
+	// 	if (retry_count >= MDM_NETWORK_RETRY_COUNT) {
+	// 		LOG_ERR("Failed network init.  Too many attempts!");
+	// 		ret = -ENETUNREACH;
+	// 		goto error;
+	// 	}
 
-		LOG_ERR("Failed network init.  Restarting process.");
-		goto restart;
-	}
+	// 	LOG_ERR("Failed network init.  Restarting process.");
+	// 	goto restart;
+	// }
 
-	ret = modem_cmd_handler_setup_cmds(&mctx.iface, &mctx.cmd_handler,
-					   post_setup_cmds,
-					   ARRAY_SIZE(post_setup_cmds),
-					   &mdata.sem_response,
-					   MDM_REGISTRATION_TIMEOUT);
-	if (ret < 0) {
-		goto error;
-	}
+	// ret = modem_cmd_handler_setup_cmds(&mctx.iface, &mctx.cmd_handler,
+	// 				   post_setup_cmds,
+	// 				   ARRAY_SIZE(post_setup_cmds),
+	// 				   &mdata.sem_response,
+	// 				   MDM_REGISTRATION_TIMEOUT);
+	// if (ret < 0) {
+	// 	goto error;
+	// }
 
 	LOG_INF("Network is ready.");
 
 	/* start RSSI query */
-	k_delayed_work_submit_to_queue(&modem_workq,
-				       &mdata.rssi_query_work,
-				       K_SECONDS(RSSI_TIMEOUT_SECS));
+	// k_delayed_work_submit_to_queue(&modem_workq,
+	// 			       &mdata.rssi_query_work,
+	// 			       K_SECONDS(RSSI_TIMEOUT_SECS));
 
 error:
 	return;
 }
 
-int new_port = 16666;
+static int new_port = 16666;
 
 /*
  * generic socket creation function
@@ -1007,6 +1007,7 @@ static int offload_connect(void *obj, const struct sockaddr *addr,
 	return 0;
 }
 
+#ifndef CONFIG_MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
 /* support for POLLIN only for now. */
 static int offload_poll(struct pollfd *fds, int nfds, int msecs)
 {
@@ -1031,6 +1032,7 @@ static int offload_poll(struct pollfd *fds, int nfds, int msecs)
 
 	return modem_socket_poll(&mdata.socket_config, fds, nfds, msecs);
 }
+#endif	// CONFIG_MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
 
 static ssize_t offload_recvfrom(void *obj, void *buf, size_t len,
 				int flags, struct sockaddr *from,
@@ -1050,18 +1052,18 @@ static ssize_t offload_recvfrom(void *obj, void *buf, size_t len,
 		return -1;
 	}
 
-	if (flags & MSG_PEEK) {
-		errno = ENOTSUP;
-		return -1;
-	}
+	// if (flags & MSG_PEEK) {
+	// 	errno = ENOTSUP;
+	// 	return -1;
+	// }
 
 	next_packet_size = modem_socket_next_packet_size(&mdata.socket_config,
 							 sock);
 	if (!next_packet_size) {
-		if (flags & MSG_DONTWAIT) {
-			errno = EAGAIN;
-			return -1;
-		}
+		// if (flags & MSG_DONTWAIT) {
+		// 	errno = EAGAIN;
+		// 	return -1;
+		// }
 
 		if (!sock->is_connected && sock->ip_proto != IPPROTO_UDP) {
 			errno = 0;
@@ -1152,6 +1154,7 @@ static ssize_t offload_sendto(void *obj, const void *buf, size_t len,
 	return ret;
 }
 
+#ifndef CONFIG_MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
 static int offload_ioctl(void *obj, unsigned int request, va_list args)
 {
 	switch (request) {
@@ -1182,6 +1185,7 @@ static int offload_ioctl(void *obj, unsigned int request, va_list args)
 		return -1;
 	}
 }
+#endif	// CONFIG_MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
 
 static ssize_t offload_read(void *obj, void *buffer, size_t count)
 {
@@ -1197,7 +1201,9 @@ static const struct socket_op_vtable offload_socket_fd_op_vtable = {
 	.fd_vtable = {
 		.read = offload_read,
 		.write = offload_write,
+#ifndef CONFIG_MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
 		.ioctl = offload_ioctl,
+#endif	// CONFIG_MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
 	},
 	.bind = offload_bind,
 	.connect = offload_connect,
@@ -1301,6 +1307,7 @@ const struct socket_dns_offload offload_dns_ops = {
 };
 #endif
 
+#ifndef CONFIG_MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
 static int net_offload_dummy_get(sa_family_t family,
 				 enum net_sock_type type,
 				 enum net_ip_protocol ip_proto,
@@ -1316,6 +1323,7 @@ static int net_offload_dummy_get(sa_family_t family,
 static struct net_offload modem_net_offload = {
 	.get = net_offload_dummy_get,
 };
+#endif	// CONFIG_MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
 
 #define HASH_MULTIPLIER		37
 static u32_t hash32(char *str, int len)
@@ -1346,6 +1354,7 @@ static inline u8_t *modem_get_mac(struct device *dev)
 	return data->mac_addr;
 }
 
+#ifndef CONFIG_MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
 static void modem_net_iface_init(struct net_if *iface)
 {
 	struct device *dev = net_if_get_device(iface);
@@ -1365,6 +1374,7 @@ static void modem_net_iface_init(struct net_if *iface)
 static struct net_if_api api_funcs = {
 	.init = modem_net_iface_init,
 };
+#endif	// CONFIG_MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
 
 static struct modem_cmd response_cmds[] = {
 	MODEM_CMD("OK", on_cmd_ok, 0U, ""), /* 3GPP */
@@ -1387,10 +1397,10 @@ static int modem_init(struct device *dev)
 	k_sem_init(&mdata.sem_response, 0, 1);
 
 	/* initialize the work queue */
-	k_work_q_start(&modem_workq,
-		       modem_workq_stack,
-		       K_THREAD_STACK_SIZEOF(modem_workq_stack),
-		       K_PRIO_COOP(7));
+	// k_work_q_start(&modem_workq,
+	// 	       modem_workq_stack,
+	// 	       K_THREAD_STACK_SIZEOF(modem_workq_stack),
+	// 	       K_PRIO_COOP(7));
 
 	/* socket config */
 	mdata.socket_config.sockets = &mdata.sockets[0];
@@ -1452,7 +1462,7 @@ static int modem_init(struct device *dev)
 			NULL, NULL, NULL, K_PRIO_COOP(7), 0, K_NO_WAIT);
 
 	/* init RSSI query */
-	k_delayed_work_init(&mdata.rssi_query_work, modem_rssi_query_work);
+	// k_delayed_work_init(&mdata.rssi_query_work, modem_rssi_query_work);
 
 	modem_reset();
 
@@ -1460,13 +1470,8 @@ error:
 	return ret;
 }
 
-int modem_get_rssi()
-{
-	return mctx.data_rssi;
-}
-
-struct {
-	int cellid;
+static struct {
+	uint32_t cellid;
 } uestats;
 
 /*
@@ -1481,7 +1486,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmdinfo_cellid)
 	return 0;
 }
 
-int modem_get_uestats()
+static int modem_get_uestats()
 {
 	/* AT+NUESTATS returns e.g.:
 	Signal power:-663
@@ -1497,13 +1502,12 @@ int modem_get_uestats()
 	RSRQ:-108
 	*/
 
-	uestats.cellid = -1;
+	uestats.cellid = 0xFFFFFFFF;
 
 	struct modem_cmd cmd = MODEM_CMD("Cell ID:", on_cmd_atcmdinfo_cellid, 1U, ",");
 	static char *send_cmd = "AT+NUESTATS";
 	int ret;
 
-	/* query modem RSSI */
 	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler,
 			     &cmd, 1U, send_cmd, &mdata.sem_response,
 			     MDM_CMD_TIMEOUT);
@@ -1514,7 +1518,7 @@ int modem_get_uestats()
 	return 0;
 }
 
-int modem_get_cellid()
+uint32_t modem_get_cellid()
 {
 	modem_get_uestats();
 
@@ -1526,7 +1530,57 @@ int modem_get_cellid()
 	return uestats.cellid;
 }
 
+int8_t modem_get_csq()
+{
+	modem_rssi_query_work(NULL);
+
+	return mctx.data_rssi;
+}
+
+uint8_t modem_is_registered()
+{
+	// 1 = home network, 5 = roaming
+	return (mdata.ev_creg == 1) || (mdata.ev_creg == 5);
+}
+
+#ifndef CONFIG_MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
 NET_DEVICE_OFFLOAD_INIT(modem_bc68, CONFIG_MODEM_QUECTEL_BC68_NAME,
 			modem_init, &mdata, NULL,
 			CONFIG_MODEM_QUECTEL_BC68_INIT_PRIORITY, &api_funcs,
 			MDM_MAX_DATA_LENGTH);
+#else
+int connect(int sock, const struct sockaddr *addr,
+			  socklen_t addrlen)
+{
+	// TODO: check parameters
+	void *obj = z_get_fd_obj(sock, (const struct fd_op_vtable *) &offload_socket_fd_op_vtable, EINVAL);
+	// TODO: check return value
+	return offload_connect(obj, addr, addrlen);
+}
+
+ssize_t recv(int sock, void *buf, size_t max_len, int flags)
+{
+	// TODO: check parameters
+	void *obj = z_get_fd_obj(sock, (const struct fd_op_vtable *) &offload_socket_fd_op_vtable, EINVAL);
+	// TODO: check return value
+	return offload_recvfrom(obj, buf, max_len, 0, NULL, 0);
+}
+
+int socket(int family, int type, int proto)
+{
+	return offload_socket(family, type, proto);
+}
+
+ssize_t send(int sock, const void *buf, size_t len, int flags)
+{
+	// TODO: check parameters
+	void *obj = z_get_fd_obj(sock, (const struct fd_op_vtable *) &offload_socket_fd_op_vtable, EINVAL);
+	// TODO: check return value
+	return offload_write(obj, buf, len);
+}
+
+int init_modem()
+{
+	return modem_init(0);
+}
+#endif	// CONFIG_MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
