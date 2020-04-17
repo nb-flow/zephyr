@@ -11,5 +11,6 @@
 #define I2C_BITRATE_FAST_PLUS	1000000 /* 1 Mbit/s */
 #define I2C_BITRATE_HIGH	3400000	/* 3.4 Mbit/s */
 #define I2C_BITRATE_ULTRA	5000000 /* 5 Mbit/s */
+#define I2C_BITRATE_SLOW    10000   /* 10 Kbit/s */
 
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_I2C_I2C_H_ */

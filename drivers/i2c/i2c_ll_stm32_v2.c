@@ -603,6 +603,12 @@ int stm32_i2c_configure_timing(struct device *dev, u32_t clock)
 	u32_t timing = 0U;
 
 	switch (I2C_SPEED_GET(data->dev_config)) {
+	case I2C_SPEED_SLOW:
+		i2c_h_min_time = 49000U;
+		i2c_l_min_time = 50000U;
+		i2c_hold_time_min = 500U;
+		i2c_setup_time_min = 1250U;
+		break;
 	case I2C_SPEED_STANDARD:
 		i2c_h_min_time = 4000U;
 		i2c_l_min_time = 4700U;
