@@ -39,7 +39,7 @@ LOG_MODULE_REGISTER(modem_quectel_bc68, CONFIG_MODEM_LOG_LEVEL);
 #define MDM_PROMPT_CMD_DELAY		K_MSEC(75)
 
 #define MDM_MAX_DATA_LENGTH		1024
-#define MDM_RECV_MAX_BUF		5				// <- reduced to save RAM
+#define MDM_RECV_MAX_BUF		10				// <- reduced to save RAM
 #define MDM_RECV_BUF_SIZE		128
 
 #define MDM_MAX_SOCKETS			6
@@ -679,7 +679,9 @@ static void modem_reset(void)
 	 */
 	ret = -1;
 	while (counter++ < 50 && ret < 0) {
-		k_sleep(K_SECONDS(2));
+		if (counter > 1) {
+			k_sleep(K_SECONDS(2));
+		}
 		ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler,
 				     NULL, 0, "AT", &mdata.sem_response,
 				     MDM_CMD_TIMEOUT);
