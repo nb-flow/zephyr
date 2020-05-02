@@ -1,0 +1,73 @@
+# Quectel BC68 driver options
+
+# SPDX-License-Identifier: Apache-2.0
+
+config MODEM_QUECTEL_BC68
+	bool "Enable Quectel BC68 modem driver"
+	select MODEM_CONTEXT
+	select MODEM_CMD_HANDLER
+	select MODEM_IFACE_UART
+	select MODEM_SOCKET
+	select NET_OFFLOAD if !MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
+	select NET_SOCKETS_OFFLOAD if !MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
+#	imply GPIO
+	help
+	  Choose this setting to enable Quectel BC68 LTE-CatM1/NB-IoT modem
+	  driver.
+
+if MODEM_QUECTEL_BC68
+
+config MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
+	bool "Circumvent all networking modules"
+	default n
+	depends on !NETWORKING
+
+if MODEM_QUECTEL_BC68_WITHOUT_NETWORKING
+	config NET_UTILS_LOG_LEVEL
+		int
+		# LOG_LEVEL_INF
+		default 3 
+endif
+
+config MODEM_QUECTEL_BC68_REBOOT
+	bool "Reboot the Quectel BC68 modem on startup"
+	default n
+	help
+	  Choose this setting to reboot the Quectel BC68 modem on startup.
+
+config MODEM_QUECTEL_BC68_NAME
+	string "Driver name"
+	default "MODEM_QUECTEL"
+
+config MODEM_QUECTEL_BC68_RX_STACK_SIZE
+	int "Stack size for the Quectel BC68 modem driver RX thread"
+	default 1028
+	help
+	  This stack is used by the Quectel BC68 RX thread.
+
+#config MODEM_QUECTEL_BC68_RX_WORKQ_STACK_SIZE
+#	int "Stack size for the Quectel BC68 modem driver work queue"
+#	default 2048
+#	help
+#	  This stack is used by the work queue to pass off net_pkt data
+#	  to the rest of the network stack, letting the rx thread continue
+#	  processing data.
+
+#config MODEM_QUECTEL_BC68_APN
+#	string "APN for establishing network connection"
+#	default "hologram"
+#	help
+#	  This setting is used in the AT+CGDCONT command to set the APN name
+#	  for the network connection context.  This value is specific to
+#	  the network provider and may need to be changed.
+
+config MODEM_QUECTEL_BC68_INIT_PRIORITY
+	int "Quectel BC68 driver init priority"
+	default 80
+	help
+	  Quectel BC68 device driver initialization priority.
+	  Do not mess with it unless you know what you are doing.
+	  Note that the priority needs to be lower than the net stack
+	  so that it can start before the networking sub-system.
+
+endif # MODEM_QUECTEL_BC68
