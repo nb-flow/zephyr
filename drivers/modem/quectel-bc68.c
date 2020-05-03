@@ -1476,6 +1476,12 @@ static struct {
 	uint32_t cellid;
 } uestats;
 
+static struct {
+	uint16_t battery_voltage_mv;
+	int16_t temperature;
+} chip_info;
+
+
 /*
  * Handler: Cell ID:<cellid>[0]
  */
@@ -1519,6 +1525,41 @@ static int modem_get_uestats()
 
 	return 0;
 }
+
+/*
+ * Handler: Cell ID:<cellid>[0]
+ */
+MODEM_CMD_DEFINE(on_cmd_atcmdchip_info_battery_voltage)
+{
+	chip_info.battery_voltage_mv = ATOI(argv[0], 0xFFFF, "battery_voltage_mv");
+
+	LOG_INF("battery voltage mv: %d", (int) chip_info.battery_voltage_mv);
+	
+	return 0;
+}
+
+uint16_t modem_get_battery_voltage_mv(void)
+{
+	/* at+qchipinfo=vbat returns e.g.:
+	+QCHIPINFO:VBAT,3598
+	*/
+
+	chip_info.battery_voltage_mv = 0xFFFF;
+
+	struct modem_cmd cmd = MODEM_CMD("+QCHIPINFO:VBAT,", on_cmd_atcmdchip_info_battery_voltage, 1U, ",");
+	static char *send_cmd = "AT+QCHIPINFO=VBAT";
+	int ret;
+
+	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler,
+			     &cmd, 1U, send_cmd, &mdata.sem_response,
+			     MDM_CMD_TIMEOUT);
+	if (ret < 0) {
+		LOG_ERR("AT+QCHIPINFO=VBAT ret:%d", ret);
+	}
+
+	return chip_info.battery_voltage_mv;
+}
+
 
 uint32_t modem_get_cellid()
 {

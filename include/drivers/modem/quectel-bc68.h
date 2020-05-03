@@ -10,3 +10,4 @@ int init_modem();
 uint32_t modem_get_cellid();
 int8_t modem_get_csq();
 uint8_t modem_is_registered();
+uint16_t modem_get_battery_voltage_mv(void);
