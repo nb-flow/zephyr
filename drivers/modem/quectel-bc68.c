@@ -634,7 +634,7 @@ static void modem_rssi_query_work(struct k_work *work)
 	// }
 }
 
-static void modem_reset(void)
+static int modem_reset(void)
 {
 	int ret = 0, retry_count = 0, counter = 0;
 	static struct setup_cmd setup_cmds[] = {
@@ -675,16 +675,13 @@ static void modem_reset(void)
 	LOG_INF("Waiting for modem to respond");
 
 	/* Give the modem a while to start responding to simple 'AT' commands.
-	 * Also wait for CSPS=1 or RRCSTATE=1 notification
+	 * Wait maximum 3*5 = 15 seconds
 	 */
 	ret = -1;
-	while (counter++ < 50 && ret < 0) {
-		if (counter > 1) {
-			k_sleep(K_SECONDS(2));
-		}
+	while (counter++ < 3 && ret < 0) {
 		ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler,
 				     NULL, 0, "AT", &mdata.sem_response,
-				     MDM_CMD_TIMEOUT);
+				     K_SECONDS(5));
 		if (ret < 0 && ret != -ETIMEDOUT) {
 			break;
 		}
@@ -834,7 +831,7 @@ static void modem_reset(void)
 	// 			       K_SECONDS(RSSI_TIMEOUT_SECS));
 
 error:
-	return;
+	return ret;
 }
 
 static int new_port = 16666;
@@ -1466,7 +1463,7 @@ static int modem_init(struct device *dev)
 	/* init RSSI query */
 	// k_delayed_work_init(&mdata.rssi_query_work, modem_rssi_query_work);
 
-	modem_reset();
+	ret = modem_reset();
 
 error:
 	return ret;
