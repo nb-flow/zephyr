@@ -46,7 +46,16 @@ static const struct pin_config pinconf[] = {
 	{STM32_PIN_PA11, STM32L4X_PINMUX_FUNC_PA11_CAN_RX},
 	{STM32_PIN_PA12, STM32L4X_PINMUX_FUNC_PA12_CAN_TX},
 #endif /* CONFIG_CAN_1 */
+#ifdef CONFIG_ADC_1
+	/* please note this list is not complete and also it does not check if other protocols such as 
+	 * uart, spi or i2c are enabled
+	 */ 
+	{STM32_PIN_PA0, STM32L4X_PINMUX_FUNC_PA0_ADC12_IN5},
+	{STM32_PIN_PA5, STM32L4X_PINMUX_FUNC_PA5_ADC12_IN10},
+	{STM32_PIN_PA6, STM32L4X_PINMUX_FUNC_PA6_ADC12_IN11},
+#endif /* CONFIG_ADC_1 */
 };
+
 
 static int pinmux_stm32_init(struct device *port)
 {
@@ -59,3 +68,5 @@ static int pinmux_stm32_init(struct device *port)
 
 SYS_INIT(pinmux_stm32_init, PRE_KERNEL_1,
 	 CONFIG_PINMUX_STM32_DEVICE_INITIALIZATION_PRIORITY);
+
+
