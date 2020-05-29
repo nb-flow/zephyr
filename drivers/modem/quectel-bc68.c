@@ -1557,6 +1557,40 @@ uint16_t modem_get_battery_voltage_mv(void)
 	return chip_info.battery_voltage_mv;
 }
 
+/*
+ * Handler: Cell ID:<cellid>[0]
+ */
+MODEM_CMD_DEFINE(on_cmd_atcmdchip_info_temperature)
+{
+	chip_info.temperature = ATOI(argv[0], 0xFFFF, "temperature");
+
+	LOG_INF("modem temperature: %ddeg", (int) chip_info.temperature);
+	
+	return 0;
+}
+
+int16_t modem_get_temperature(void)
+{
+	/* at+qchipinfo=vbat returns e.g.:
+	+QCHIPINFO:VBAT,3598
+	*/
+
+	chip_info.temperature = 0xFFFF;
+
+	struct modem_cmd cmd = MODEM_CMD("+QCHIPINFO:TEMP,", on_cmd_atcmdchip_info_temperature, 1U, ",");
+	static char *send_cmd = "AT+QCHIPINFO=TEMP";
+	int ret;
+
+	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler,
+			     &cmd, 1U, send_cmd, &mdata.sem_response,
+			     MDM_CMD_TIMEOUT);
+	if (ret < 0) {
+		LOG_ERR("AT+QCHIPINFO=TEMP ret:%d", ret);
+	}
+
+	return chip_info.temperature;
+}
+
 
 uint32_t modem_get_cellid()
 {
